@@ -2,7 +2,7 @@
 """
 analyze_data.py — Step 3 (per-priority pass) of IntelliAide pure-skills pipeline.
 
-Runs ML-based YAML classification and  log template mining on the
+Runs ML-based YAML classification and log template mining on the
 extracted cluster files for one priority tier, then serializes both the ML
 classification result and the log error entries to a JSON file so that
 perform_rca.py can read them without accessing the Results/ directory.
@@ -33,8 +33,15 @@ import os
 import sys
 from pathlib import Path
 
-_APP = "/app/skills/app"
-for _p in (f"{_APP}/intelliaide_deps", f"{_APP}/Main-program", _APP):
+# All IntelliAide engine code lives alongside this script in the same folder.
+# At runtime (in the sandbox container) this resolves to /app/skills/intelliaide/
+_SKILL_DIR = Path(__file__).resolve().parent
+for _p in (
+    str(_SKILL_DIR / "vendor"),        # vendored packages (drain3, scikit-learn, etc.)
+    str(_SKILL_DIR / "Main-program"),
+    str(_SKILL_DIR / "python-client"),
+    str(_SKILL_DIR),
+):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
@@ -49,7 +56,7 @@ _WRITABLE_APP.mkdir(parents=True, exist_ok=True)
 (Path("/tmp/intelliaide-app/Results/log_classifications")).mkdir(parents=True, exist_ok=True)
 
 # data_analyzer.py binds get_application_dir at import time (from app_paths import ...).
-# Patch its local reference so  output goes to /tmp instead of the read-only image mount.
+# Patch its local reference so output goes to /tmp instead of the read-only image mount.
 _da.get_application_dir = lambda: _WRITABLE_APP
 
 # llm_rca_agent.py and data_analyzer.py use lazy `from app_paths import get_results_dir`.
@@ -71,7 +78,7 @@ _ERROR_LEVELS = {"RareError", "HighFreqError", "Error"}
 
 
 def _build_log_entries(log_processing_result: dict) -> list:
-    """Read -compressed error-level log content from per-file saved paths.
+    """Read error-level log content from per-file saved paths.
 
     Mirrors the logic in tools.py:execute_analyze_logs so that the resulting
     list can be passed directly to run_rca_chunked / run_rca_and_summary_continued.
@@ -149,7 +156,6 @@ def main() -> None:
         file=sys.stderr,
     )
 
-    
     analyzer = DataAnalyzer(must_gather_base_dir=cluster_dir)
     result = analyzer.analyze_files(
         file_paths,
@@ -157,9 +163,9 @@ def main() -> None:
         suggested_files_with_priority=entries,
     )
 
-    yaml_errors          = result.get("ml_classification_result", {})
+    yaml_errors           = result.get("ml_classification_result", {})
     log_processing_result = result.get("log_processing_result", {})
-    log_entries          = _build_log_entries(log_processing_result)
+    log_entries           = _build_log_entries(log_processing_result)
 
     yaml_count = len(result.get("yaml_files_processed", []))
     log_count  = len(result.get("log_files_for_analysis", []))

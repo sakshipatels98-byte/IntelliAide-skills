@@ -31,6 +31,13 @@ import sys
 import uuid
 from pathlib import Path
 
+# All IntelliAide engine code lives alongside this script in the same folder.
+# At runtime (in the sandbox container) this resolves to /app/skills/intelliaide/
+_SKILL_DIR = Path(__file__).resolve().parent
+_EXTRACTOR  = str(_SKILL_DIR / "Main-program" / "live-cluster-extraction.py")
+_PATHS_FILE = str(_SKILL_DIR / "Main-program" / "file_paths.md")
+_JOB_BASE   = "/tmp/intelliaide"
+
 
 def _log_pod(msg: str) -> None:
     """Write a progress line directly to the container log stream (PID 1 stdout).
@@ -46,13 +53,6 @@ def _log_pod(msg: str) -> None:
             fh.write(line)
     except Exception:
         sys.stderr.write(line)
-
-
-# Paths inside the skills image mount (/app/skills/ in the sandbox container)
-_APP          = "/app/skills/app"
-_EXTRACTOR    = f"{_APP}/Main-program/live-cluster-extraction.py"
-_PATHS_FILE   = f"{_APP}/Main-program/file_paths.md"
-_JOB_BASE     = "/tmp/intelliaide"
 
 
 def main() -> None:
@@ -89,12 +89,18 @@ def main() -> None:
     print(f"[extract_cluster] Extracting live cluster data → {cluster_dir}", file=sys.stderr)
 
     # --- Run extraction ---
+    # Build PYTHONPATH so live-cluster-extraction.py can find:
+    #   - python-client/    etcd_client, node_logs_client, inspect_kube_adapter
+    #   - vendor/           kubernetes, pyyaml, etc. (vendored at image build time)
+    # The sandbox runs scripts with its own Python, not the UBI9 Python baked into
+    # the skills image, so the vendored packages must be on PYTHONPATH explicitly.
     env = os.environ.copy()
     existing_pp = env.get("PYTHONPATH", "")
     env["PYTHONPATH"] = ":".join(filter(None, [
-        f"{_APP}/intelliaide_deps",
-        f"{_APP}/Main-program",
-        _APP,
+        str(_SKILL_DIR / "vendor"),
+        str(_SKILL_DIR / "python-client"),
+        str(_SKILL_DIR / "Main-program"),
+        str(_SKILL_DIR),
         existing_pp,
     ]))
 
@@ -103,7 +109,7 @@ def main() -> None:
         "--paths-file", _PATHS_FILE,
         "--output",     str(cluster_dir),
     ]
-    proc = subprocess.run(cmd, cwd=_APP, env=env)
+    proc = subprocess.run(cmd, cwd=str(_SKILL_DIR), env=env)
 
     success = proc.returncode == 0
     if not success:

@@ -46,12 +46,19 @@ import json
 import sys
 from pathlib import Path
 
-_APP = "/app/skills/app"
-for _p in (f"{_APP}/intelliaide_deps", f"{_APP}/Main-program", _APP):
+# All IntelliAide engine code lives alongside this script in the same folder.
+# At runtime (in the sandbox container) this resolves to /app/skills/intelliaide/
+_SKILL_DIR = Path(__file__).resolve().parent
+for _p in (
+    str(_SKILL_DIR / "vendor"),        # vendored packages (kubernetes, anthropic, etc.)
+    str(_SKILL_DIR / "Main-program"),
+    str(_SKILL_DIR / "python-client"),
+    str(_SKILL_DIR),
+):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-from llm_rca_agent import run_rca_chunked, run_rca_and_summary_continued   # noqa: E402
+from llm_rca_agent import run_rca_chunked                                   # noqa: E402
 from app_paths import get_config_path                                        # noqa: E402
 import app_paths as _ap                                                      # noqa: E402
 
@@ -112,14 +119,20 @@ def main() -> None:
             f"({len(prev_summary)} chars)",
             file=sys.stderr,
         )
-        result = run_rca_and_summary_continued(
+        # Carry forward the previous RCA as context by prepending it to the
+        # problem statement.  run_rca_chunked handles all priority passes;
+        # there is no separate continuation function.
+        continuation_query = (
+            f"PREVIOUS RCA SUMMARY ({args.previous_priority} priority):\n"
+            f"{prev_summary}\n\n"
+            f"---\nNow analyze the {args.priority}-priority files.\n"
+            f"Original problem: {query}"
+        )
+        result = run_rca_chunked(
             ml_classification_result=yaml_errors,
             config_path=config_path,
-            problem_statement=query,
+            problem_statement=continuation_query,
             log_error_entries=log_entries,
-            previous_rca_summary=prev_summary,
-            previous_priority_stage=args.previous_priority,
-            new_priority_stage=args.priority,
         )
     else:
         result = run_rca_chunked(

@@ -30,6 +30,22 @@ import json
 import sys
 from pathlib import Path
 
+# All IntelliAide engine code lives alongside this script in the same folder.
+# At runtime (in the sandbox container) this resolves to /app/skills/intelliaide/
+_SKILL_DIR = Path(__file__).resolve().parent
+for _p in (
+    str(_SKILL_DIR / "vendor"),        # vendored packages (anthropic, etc.)
+    str(_SKILL_DIR / "Main-program"),
+    str(_SKILL_DIR / "python-client"),
+    str(_SKILL_DIR),
+):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+
+from must_gather_file_selector import MustGatherFileSelector   # noqa: E402
+from data_analyzer import DataAnalyzer                          # noqa: E402
+from app_paths import get_must_gather_docs_dir, get_config_path # noqa: E402
+
 
 def _log_pod(msg: str) -> None:
     """Write a progress line directly to the container log stream (PID 1 stdout)."""
@@ -39,16 +55,6 @@ def _log_pod(msg: str) -> None:
             fh.write(line)
     except Exception:
         sys.stderr.write(line)
-
-
-_APP = "/app/skills/app"
-for _p in (f"{_APP}/intelliaide_deps", f"{_APP}/Main-program", _APP):
-    if _p not in sys.path:
-        sys.path.insert(0, _p)
-
-from must_gather_file_selector import MustGatherFileSelector   # noqa: E402
-from data_analyzer import DataAnalyzer                          # noqa: E402
-from app_paths import get_must_gather_docs_dir, get_config_path # noqa: E402
 
 
 def main() -> None:

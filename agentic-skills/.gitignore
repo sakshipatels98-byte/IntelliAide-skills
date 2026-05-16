@@ -1,0 +1,27 @@
+# ── Credentials ────────────────────────────────────────────────────────────────
+# config.json contains GCP project IDs and API keys — never commit it.
+# Commit config.json.template instead (already in repo with YOUR_GCP_PROJECT_ID).
+intelliaide/Config/config.json
+
+# ── Build artifacts ─────────────────────────────────────────────────────────────
+# Vendored packages produced by `pip install --target` during `podman build`.
+# These are NOT source — they are regenerated from requirements.txt every build.
+intelliaide/vendor/
+
+# ── Runtime state ───────────────────────────────────────────────────────────────
+# Temporary job directories written by the skill scripts at runtime.
+intelliaide/Config/mcp_jobs.json
+/tmp/intelliaide/
+
+# ── Python cache ────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+
+# ── Editor / OS noise ───────────────────────────────────────────────────────────
+.DS_Store
+*.swp
+*.swo
+.idea/
+.vscode/
