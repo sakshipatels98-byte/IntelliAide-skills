@@ -1,0 +1,19 @@
+# Alias for OpenShift BuildConfig (dockerfilePath: Dockerfile.skills).
+# Canonical build file: Containerfile
+#
+#   podman build -f Containerfile -t lightspeed-skills:latest .
+
+FROM registry.access.redhat.com/ubi9/python-312
+
+USER root
+
+COPY intelliaide/ /intelliaide/
+
+RUN pip install --no-cache-dir --target /intelliaide/vendor -r /intelliaide/requirements.txt
+
+RUN chmod -R 755 /intelliaide && \
+    mkdir -p /tmp/intelliaide /tmp/cluster-extract /tmp/intelliaide-app/Results && \
+    chgrp -R 0 /intelliaide /tmp/intelliaide /tmp/cluster-extract /tmp/intelliaide-app && \
+    chmod -R g+rwX /intelliaide /tmp/intelliaide /tmp/cluster-extract /tmp/intelliaide-app
+
+USER 1001

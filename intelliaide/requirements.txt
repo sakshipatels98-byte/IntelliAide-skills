@@ -19,9 +19,6 @@ requests>=2.31.0
 # --- YAML parsing ---
 PyYAML>=6.0.0
 
-# --- Kubernetes API client (live cluster extraction) ---
-kubernetes>=28.0.0
-
 # --- GCP Vertex AI authentication (gcloud token exchange) ---
 google-auth>=2.20.0
 
